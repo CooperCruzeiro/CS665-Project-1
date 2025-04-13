@@ -1,11 +1,11 @@
 -- create.sql 
 
 
--- Drop tables if they already exist
-DROP TABLE IF EXISTS Products;
-DROP TABLE IF EXISTS Suppliers;
-DROP TABLE IF EXISTS Customers;
-DROP TABLE IF EXISTS Transactions;
+-- -- Drop tables if they already exist
+-- DROP TABLE IF EXISTS Products;
+-- DROP TABLE IF EXISTS Suppliers;
+-- DROP TABLE IF EXISTS Customers;
+-- DROP TABLE IF EXISTS Transactions;
 
 -- Suppliers Table
 CREATE TABLE Suppliers (
@@ -31,7 +31,7 @@ CREATE TABLE Products (
 CREATE TABLE Customers (
     CustomerID INTEGER PRIMARY KEY AUTOINCREMENT,
     Name TEXT NOT NULL,
-    ContactInfo TEXT,
+    Email TEXT,
     Address TEXT NOT NULL
 );
 -- Functional Dependency: CustomerID - (Name, ContactInfo, Address)

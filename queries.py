@@ -1,7 +1,7 @@
 import sqlite3
-
+import os
 # Connect to the database
-conn = sqlite3.connect('inventory.db')
+conn = sqlite3.connect("inventory.db")
 cursor = conn.cursor()
 
 # Function to execute a SQL file
