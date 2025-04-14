@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 
 # Connect to the database
-conn = sqlite3.connect("inventory.db")
+conn = sqlite3.connect("C:\Intro to Database Systems\Project 1\Application\CS665-Project-1\inventory.db")
 cursor = conn.cursor()
 
 # Create the main window
@@ -13,6 +13,9 @@ root.title("Inventory Management System")
 # Create a Notebook widget to support tabbed views in the GUI
 notebook = ttk.Notebook(root)
 notebook.pack(fill="both", expand=True)
+
+#---------------------------
+# PRODUCTS TAB
 
 # Create a frame for the Products tab
 product_frame = tk.Frame(notebook)
@@ -102,9 +105,9 @@ product_tree.bind('<<TreeviewSelect>>', select_product)
 refresh_products()
 
 
-# ------------------------
+#---------------------------
 # CUSTOMERS TAB
-# ------------------------
+
 customer_frame = tk.Frame(notebook)
 notebook.add(customer_frame, text="Customers")
 
@@ -129,7 +132,7 @@ customer_tree.heading("Email", text="Email")
 customer_tree.heading("Address", text="Address")
 customer_tree.grid(row=5, column=0, columnspan=4, pady=10)
 
-# Refresh the customer list by re-fetching from the database
+# Refresh the customer list
 def refresh_customers():
     customer_tree.delete(*customer_tree.get_children())
     cursor.execute("SELECT * FROM Customers")
@@ -186,6 +189,93 @@ tk.Button(customer_frame, text="Delete Customer", command=delete_customer).grid(
 
 customer_tree.bind('<<TreeviewSelect>>', select_customer)
 refresh_customers()
+
+
+#---------------------------
+# SUPPLIERS TAB
+# ------------------------
+supplier_frame = tk.Frame(notebook)
+notebook.add(supplier_frame, text="Suppliers")
+
+# Supplier Form Labels and Entry Fields
+tk.Label(supplier_frame, text="Name").grid(row=0, column=0)
+tk.Label(supplier_frame, text="Email").grid(row=1, column=0)
+tk.Label(supplier_frame, text="Location").grid(row=2, column=0)
+
+supp_name_entry = tk.Entry(supplier_frame)
+supp_email_entry = tk.Entry(supplier_frame)
+supp_location_entry = tk.Entry(supplier_frame)
+
+supp_name_entry.grid(row=0, column=1)
+supp_email_entry.grid(row=1, column=1)
+supp_location_entry.grid(row=2, column=1)
+
+# Treeview to display suppliers
+supplier_tree = ttk.Treeview(supplier_frame, columns=("ID", "Name", "Email", "Location"), show="headings")
+supplier_tree.heading("ID", text="ID")
+supplier_tree.heading("Name", text="Name")
+supplier_tree.heading("Email", text="Email")
+supplier_tree.heading("Location", text="Location")
+supplier_tree.grid(row=5, column=0, columnspan=4, pady=10)
+
+# Refresh supplier list
+def refresh_suppliers():
+    supplier_tree.delete(*supplier_tree.get_children())
+    cursor.execute("SELECT * FROM Suppliers")
+    for row in cursor.fetchall():
+        supplier_tree.insert('', 'end', values=row)
+
+# Add supplier
+def add_supplier():
+    name = supp_name_entry.get()
+    email = supp_email_entry.get()
+    Location = supp_location_entry.get()
+    cursor.execute("INSERT INTO Suppliers (Name, ContactInfo, Location) VALUES (?, ?, ?)", (name, email, Location))
+    conn.commit()
+    refresh_suppliers()
+
+# Populate supplier fields on selection
+def select_supplier(event):
+    selected = supplier_tree.selection()
+    if selected:
+        values = supplier_tree.item(selected[0], 'values')
+        supp_name_entry.delete(0, tk.END)
+        supp_name_entry.insert(0, values[1])
+        supp_email_entry.delete(0, tk.END)
+        supp_email_entry.insert(0, values[2])
+        supp_location_entry.delete(0, tk.END)
+        supp_location_entry.insert(0, values[3])
+
+# Update supplier
+def update_supplier():
+    selected = supplier_tree.selection()
+    if selected:
+        supplier_id = supplier_tree.item(selected[0], 'values')[0]
+        name = supp_name_entry.get()
+        email = supp_email_entry.get()
+        Location = supp_location_entry.get()
+        cursor.execute("UPDATE Suppliers SET Name=?, ContactInfo=?, Location=? WHERE SupplierID=?",
+                       (name, email, Location, supplier_id))
+        conn.commit()
+        refresh_suppliers()
+
+# Delete supplier
+def delete_supplier():
+    selected = supplier_tree.selection()
+    if selected:
+        supplier_id = supplier_tree.item(selected[0], 'values')[0]
+        cursor.execute("DELETE FROM Suppliers WHERE SupplierID=?", (supplier_id,))
+        conn.commit()
+        refresh_suppliers()
+
+# Buttons for Supplier actions
+tk.Button(supplier_frame, text="Add Supplier", command=add_supplier).grid(row=3, column=0, pady=5)
+tk.Button(supplier_frame, text="Update Supplier", command=update_supplier).grid(row=6, column=0, padx=5)
+tk.Button(supplier_frame, text="Delete Supplier", command=delete_supplier).grid(row=6, column=1, padx=5)
+
+supplier_tree.bind('<<TreeviewSelect>>', select_supplier)
+refresh_suppliers()
+
 
 # Run the main GUI loop
 root.mainloop()
