@@ -193,7 +193,7 @@ refresh_customers()
 
 #---------------------------
 # SUPPLIERS TAB
-# ------------------------
+
 supplier_frame = tk.Frame(notebook)
 notebook.add(supplier_frame, text="Suppliers")
 
@@ -275,6 +275,63 @@ tk.Button(supplier_frame, text="Delete Supplier", command=delete_supplier).grid(
 
 supplier_tree.bind('<<TreeviewSelect>>', select_supplier)
 refresh_suppliers()
+
+
+# ---------------------
+# Transactions Tab UI
+
+# Create a new frame for the Transactions tab
+transactions_frame = ttk.Frame(notebook)
+notebook.add(transactions_frame, text='Transactions')
+
+# Labels
+tk.Label(transactions_frame, text="Product:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
+tk.Label(transactions_frame, text="Customer:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+tk.Label(transactions_frame, text="Quantity Change:").grid(row=2, column=0, padx=5, pady=5, sticky='e')
+tk.Label(transactions_frame, text="Transaction Date (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=5, sticky='e')
+tk.Label(transactions_frame, text="Transaction Type:").grid(row=4, column=0, padx=5, pady=5, sticky='e')
+
+# Entry / Combobox (drop down lists) fields (Comboboxes to be populated later)
+product_combobox = ttk.Combobox(transactions_frame)
+product_combobox.grid(row=0, column=1, padx=5, pady=5)
+
+customer_combobox = ttk.Combobox(transactions_frame)
+customer_combobox.grid(row=1, column=1, padx=5, pady=5)
+
+quantity_entry = tk.Entry(transactions_frame)
+quantity_entry.grid(row=2, column=1, padx=5, pady=5)
+
+date_entry = tk.Entry(transactions_frame)
+date_entry.grid(row=3, column=1, padx=5, pady=5)
+
+type_combobox = ttk.Combobox(transactions_frame, values=["Purchase", "Sale"])   # maybe more transaction types - return, etc.
+type_combobox.grid(row=4, column=1, padx=5, pady=5)
+
+# Buttons (functionality to be connected later)
+tk.Button(transactions_frame, text="Add Transaction").grid(row=5, column=0, padx=5, pady=10)
+tk.Button(transactions_frame, text="Update Transaction").grid(row=5, column=1, padx=5, pady=10)
+tk.Button(transactions_frame, text="Delete Transaction").grid(row=5, column=2, padx=5, pady=10)
+
+
+# Treeview to display transactions
+transactions_tree = ttk.Treeview(transactions_frame, columns=("ID", "Product", "Customer", "Quantity", "Date", "Type"), show="headings")
+transactions_tree.heading("ID", text="ID")
+transactions_tree.heading("Product", text="Product")
+transactions_tree.heading("Customer", text="Customer")
+transactions_tree.heading("Quantity", text="Quantity")
+transactions_tree.heading("Date", text="Date")
+transactions_tree.heading("Type", text="Type")
+
+transactions_tree.column("ID", width=50)
+transactions_tree.column("Product", width=100)
+transactions_tree.column("Customer", width=100)
+transactions_tree.column("Quantity", width=80)
+transactions_tree.column("Date", width=100)
+transactions_tree.column("Type", width=80)
+
+# Place the Treeview in a row below the form
+transactions_tree.grid(row=6, column=0, columnspan=3, padx=5, pady=10, sticky='nsew')
+
 
 
 # Run the main GUI loop
