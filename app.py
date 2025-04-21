@@ -280,105 +280,123 @@ refresh_suppliers()
 # ---------------------
 # Transactions Tab UI
 
-# Create a new frame for the Transactions tab
-transactions_frame = ttk.Frame(notebook)
-notebook.add(transactions_frame, text='Transactions')
+transaction_frame = tk.Frame(notebook)
+notebook.add(transaction_frame, text="Transactions")
 
-# Labels
-tk.Label(transactions_frame, text="Product:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
-tk.Label(transactions_frame, text="Customer:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
-tk.Label(transactions_frame, text="Quantity Change:").grid(row=2, column=0, padx=5, pady=5, sticky='e')
-tk.Label(transactions_frame, text="Transaction Date (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=5, sticky='e')
-tk.Label(transactions_frame, text="Transaction Type:").grid(row=4, column=0, padx=5, pady=5, sticky='e')
+# Transaction Form Labels and Entry Fields
+tk.Label(transaction_frame, text="Product ID").grid(row=0, column=0)
+tk.Label(transaction_frame, text="Quantity Change").grid(row=1, column=0)
+tk.Label(transaction_frame, text="Transaction Date").grid(row=2, column=0)
+tk.Label(transaction_frame, text="Customer ID").grid(row=3, column=0)
 
-# Entry / Combobox (drop down lists) fields (Comboboxes to be populated later)
-product_combobox = ttk.Combobox(transactions_frame)
-product_combobox.grid(row=0, column=1, padx=5, pady=5)
+trans_product_entry = tk.Entry(transaction_frame)
+trans_quantity_entry = tk.Entry(transaction_frame)
+trans_date_entry = tk.Entry(transaction_frame)
+trans_customer_entry = tk.Entry(transaction_frame)
 
-customer_combobox = ttk.Combobox(transactions_frame)
-customer_combobox.grid(row=1, column=1, padx=5, pady=5)
-
-quantity_entry = tk.Entry(transactions_frame)
-quantity_entry.grid(row=2, column=1, padx=5, pady=5)
-
-date_entry = tk.Entry(transactions_frame)
-date_entry.grid(row=3, column=1, padx=5, pady=5)
-
-type_combobox = ttk.Combobox(transactions_frame, values=["Purchase", "Sale"])   # maybe more transaction types - return, etc.
-type_combobox.grid(row=4, column=1, padx=5, pady=5)
+trans_product_entry.grid(row=0, column=1)
+trans_quantity_entry.grid(row=1, column=1)
+trans_date_entry.grid(row=2, column=1)
+trans_customer_entry.grid(row=3, column=1)
 
 # Treeview to display transactions
-transactions_tree = ttk.Treeview(transactions_frame, columns=("ID", "Product", "Customer", "Quantity", "Date", "Type"), show="headings")
-transactions_tree.heading("ID", text="ID")
-transactions_tree.heading("Product", text="Product")
-transactions_tree.heading("Customer", text="Customer")
-transactions_tree.heading("Quantity", text="Quantity")
-transactions_tree.heading("Date", text="Date")
-transactions_tree.heading("Type", text="Type")
+transaction_tree = ttk.Treeview(transaction_frame, columns=("ID", "ProductID", "QuantityChange", "TransactionDate", "CustomerID"), show="headings")
+transaction_tree.heading("ID", text="ID")
+transaction_tree.heading("ProductID", text="Product ID")
+transaction_tree.heading("QuantityChange", text="Quantity Change")
+transaction_tree.heading("TransactionDate", text="Transaction Date")
+transaction_tree.heading("CustomerID", text="Customer ID")
+transaction_tree.grid(row=5, column=0, columnspan=4, pady=10)
 
-transactions_tree.column("ID", width=50)
-transactions_tree.column("Product", width=100)
-transactions_tree.column("Customer", width=100)
-transactions_tree.column("Quantity", width=80)
-transactions_tree.column("Date", width=100)
-transactions_tree.column("Type", width=80)
+# Refresh transaction list
+def refresh_transactions():
+    transaction_tree.delete(*transaction_tree.get_children())
+    cursor.execute("SELECT * FROM Transactions")
+    for row in cursor.fetchall():
+        transaction_tree.insert('', 'end', values=row)
 
-# Function to populate the entry fields when a transaction is selected
+# Add transaction
+def add_transaction():
+    product_id = trans_product_entry.get()
+    quantity_change = trans_quantity_entry.get()
+    transaction_date = trans_date_entry.get()
+    customer_id = trans_customer_entry.get()
+    
+    cursor.execute("INSERT INTO Transactions (ProductID, QuantityChange, TransactionDate, CustomerID) VALUES (?, ?, ?, ?)", 
+                  (product_id, quantity_change, transaction_date, customer_id))
+    
+    # Update product stock quantity
+    cursor.execute("UPDATE Products SET StockQuantity = StockQuantity + ? WHERE ProductID = ?", 
+                  (quantity_change, product_id))
+    
+    conn.commit()
+    refresh_transactions()
+    refresh_products()  # Also refresh products to show updated stock
+
+# Populate transaction fields on selection
 def select_transaction(event):
-    selected = transactions_tree.selection()
+    selected = transaction_tree.selection()
     if selected:
-        values = transactions_tree.item(selected[0], 'values')
+        values = transaction_tree.item(selected[0], 'values')
+        trans_product_entry.delete(0, tk.END)
+        trans_product_entry.insert(0, values[1])
+        trans_quantity_entry.delete(0, tk.END)
+        trans_quantity_entry.insert(0, values[2])
+        trans_date_entry.delete(0, tk.END)
+        trans_date_entry.insert(0, values[3])
+        trans_customer_entry.delete(0, tk.END)
+        trans_customer_entry.insert(0, values[4])
+
+# Update transaction
+def update_transaction():
+    selected = transaction_tree.selection()
+    if selected:
+        transaction_id = transaction_tree.item(selected[0], 'values')[0]
+        old_quantity = int(transaction_tree.item(selected[0], 'values')[2])
         
-        product_combobox.set(values[1])
-        customer_combobox.set(values[2])
-        quantity_entry.delete(0, tk.END)
-        quantity_entry.insert(0, values[3])
-        date_entry.delete(0, tk.END)
-        date_entry.insert(0, values[4])
-        type_combobox.set(values[5])
+        product_id = trans_product_entry.get()
+        new_quantity = int(trans_quantity_entry.get())
+        transaction_date = trans_date_entry.get()
+        customer_id = trans_customer_entry.get()
+        
+        # Calculate the difference for inventory adjustment
+        quantity_difference = new_quantity - old_quantity
+        
+        cursor.execute("UPDATE Transactions SET ProductID=?, QuantityChange=?, TransactionDate=?, CustomerID=? WHERE TransactionID=?",
+                      (product_id, new_quantity, transaction_date, customer_id, transaction_id))
+        
+        # Update product stock based on the quantity difference
+        cursor.execute("UPDATE Products SET StockQuantity = StockQuantity + ? WHERE ProductID = ?", 
+                      (quantity_difference, product_id))
+        
+        conn.commit()
+        refresh_transactions()
+        refresh_products()  # Also refresh products to show updated stock
 
+# Delete transaction
+def delete_transaction():
+    selected = transaction_tree.selection()
+    if selected:
+        transaction_id = transaction_tree.item(selected[0], 'values')[0]
+        product_id = transaction_tree.item(selected[0], 'values')[1]
+        quantity_change = int(transaction_tree.item(selected[0], 'values')[2])
+        
+        # Reverse the quantity change in the product stock
+        cursor.execute("UPDATE Products SET StockQuantity = StockQuantity - ? WHERE ProductID = ?",
+                      (quantity_change, product_id))
+        
+        cursor.execute("DELETE FROM Transactions WHERE TransactionID=?", (transaction_id,))
+        conn.commit()
+        refresh_transactions()
+        refresh_products()  # Also refresh products to show updated stock
 
-def populate_transactions():
+# Buttons for Transaction actions
+tk.Button(transaction_frame, text="Add Transaction", command=add_transaction).grid(row=4, column=0, pady=5)
+tk.Button(transaction_frame, text="Update Transaction", command=update_transaction).grid(row=6, column=0, padx=5)
+tk.Button(transaction_frame, text="Delete Transaction", command=delete_transaction).grid(row=6, column=1, padx=5)
 
-    # Execute SQL query with JOINs to get readable product and customer names
-    cursor.execute('''
-        SELECT 
-            Transactions.id, 
-            Products.name AS product_name, 
-            Customers.name AS customer_name, 
-            Transactions.quantity_change, 
-            Transactions.transaction_date, 
-            Transactions.transaction_type
-        FROM Transactions
-        JOIN Products ON Transactions.product_id = Products.id
-        JOIN Customers ON Transactions.customer_id = Customers.id
-    ''')
-
-    # Fetch all results
-    rows = cursor.fetchall()
-
-    # Clear the existing entries in the Treeview
-    for item in transactions_tree.get_children():
-        transactions_tree.delete(item)
-
-    # Insert each row into the Treeview
-    for row in rows:
-        transactions_tree.insert('', 'end', values=row)
-
-
-# Buttons (functionality to be connected later)
-tk.Button(transactions_frame, text="Add Transaction").grid(row=5, column=0, padx=5, pady=10)
-tk.Button(transactions_frame, text="Update Transaction").grid(row=5, column=1, padx=5, pady=10)
-tk.Button(transactions_frame, text="Delete Transaction").grid(row=5, column=2, padx=5, pady=10)
-
-# Place the Treeview in a row below the form
-transactions_tree.grid(row=6, column=0, columnspan=3, padx=5, pady=10, sticky='nsew')
-
-# TEMPORARY ROW for testing
-transactions_tree.insert('', 'end', values=(1, "Test Product", "Test Customer", 5, "2025-04-10", "Sale"))
-
-transactions_tree.bind('<<TreeviewSelect>>', select_transaction)
-# refresh_transactions()
+transaction_tree.bind('<<TreeviewSelect>>', select_transaction)
+refresh_transactions()
 
 
 
