@@ -283,7 +283,7 @@ refresh_suppliers()
 transaction_frame = tk.Frame(notebook)
 notebook.add(transaction_frame, text="Transactions")
 
-# Transaction Form Labels and Entry Fields
+# Transaction Labels and Entry Fields
 tk.Label(transaction_frame, text="Product ID").grid(row=0, column=0)
 tk.Label(transaction_frame, text="Quantity Change").grid(row=1, column=0)
 tk.Label(transaction_frame, text="Transaction Date").grid(row=2, column=0)
@@ -398,6 +398,97 @@ tk.Button(transaction_frame, text="Delete Transaction", command=delete_transacti
 transaction_tree.bind('<<TreeviewSelect>>', select_transaction)
 refresh_transactions()
 
+
+#---------------------------
+# QUERIES TAB
+
+query_frame = tk.Frame(notebook)
+notebook.add(query_frame, text="Queries")
+
+# frame for displaying query results
+results_frame = tk.Frame(query_frame)
+results_frame.pack(fill="both", expand=True, pady=10)
+
+# Treeview widget to display query results
+query_tree = ttk.Treeview(results_frame)
+query_tree.pack(fill="both", expand=True)
+
+# Function to execute a query and display results in the treeview
+def execute_query(query, column_names):
+    # Clear previous results
+    query_tree.delete(*query_tree.get_children())
+    
+    # Configure columns based on the query
+    query_tree['columns'] = column_names
+    query_tree['show'] = 'headings'  # Hide the first empty column
+    
+    # Set column headings
+    for col in column_names:
+        query_tree.heading(col, text=col)
+        query_tree.column(col, width=100)  # Adjust width as needed
+    
+    # Execute the query
+    cursor.execute(query)
+    
+    # Insert query results into the treeview
+    for row in cursor.fetchall():
+        query_tree.insert('', 'end', values=row)
+
+# Frame for query buttons
+buttons_frame = tk.Frame(query_frame)
+buttons_frame.pack(fill="x", padx=10, pady=5)
+
+# Query 1: Customers and their transactions (JOIN)
+def query_customer_transactions():
+    query = """
+    SELECT c.Name as CustomerName, t.TransactionID, p.Name as ProductName, 
+           t.QuantityChange, t.TransactionDate
+    FROM Customers c
+    JOIN Transactions t ON c.CustomerID = t.CustomerID
+    JOIN Products p ON t.ProductID = p.ProductID
+    ORDER BY c.Name, t.TransactionDate DESC
+    """
+    columns = ["CustomerName", "TransactionID", "ProductName", "QuantityChange", "TransactionDate"]
+    execute_query(query, columns)
+
+# Query 2: Out of stock products (Subquery)
+def query_out_of_stock():
+    query = """
+    SELECT p.ProductID, p.Name, p.StockQuantity, p.Price,
+           (SELECT COUNT(*) FROM Transactions WHERE ProductID = p.ProductID) as TransactionCount 
+    FROM Products p
+    WHERE p.StockQuantity <= 0
+    ORDER BY TransactionCount DESC
+    """
+    columns = ["ProductID", "Name", "StockQuantity", "Price", "TransactionCount"]
+    execute_query(query, columns)
+
+
+# Query 3: Products by supplier with transaction history (Multiple JOINs)
+def query_supplier_products():
+    query = """
+    SELECT s.Name as SupplierName, p.Name as ProductName, 
+           p.StockQuantity, p.Price,
+           COUNT(t.TransactionID) as TransactionCount
+    FROM Suppliers s
+    JOIN Products p ON s.SupplierID = p.SupplierID
+    LEFT JOIN Transactions t ON p.ProductID = t.ProductID
+    GROUP BY s.SupplierID, p.ProductID
+    ORDER BY s.Name, TransactionCount DESC
+    """
+    columns = ["SupplierName", "ProductName", "StockQuantity", "Price", "TransactionCount"]
+    execute_query(query, columns)
+
+# query buttons
+btn_customer_transactions = tk.Button(buttons_frame, text="Customer Transactions", command=query_customer_transactions, width=20)
+btn_customer_transactions.grid(row=0, column=0, padx=5, pady=5)
+
+btn_out_of_stock = tk.Button(buttons_frame, text="Out of Stock Products", command=query_out_of_stock, width=20)
+btn_out_of_stock.grid(row=0, column=1, padx=5, pady=5)
+
+
+btn_supplier_products = tk.Button(buttons_frame, text="Supplier Products", command=query_supplier_products, width=20)
+btn_supplier_products.grid(row=0, column=2, padx=5, pady=5)
 
 
 # Run the main GUI loop
