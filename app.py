@@ -307,12 +307,6 @@ date_entry.grid(row=3, column=1, padx=5, pady=5)
 type_combobox = ttk.Combobox(transactions_frame, values=["Purchase", "Sale"])   # maybe more transaction types - return, etc.
 type_combobox.grid(row=4, column=1, padx=5, pady=5)
 
-# Buttons (functionality to be connected later)
-tk.Button(transactions_frame, text="Add Transaction").grid(row=5, column=0, padx=5, pady=10)
-tk.Button(transactions_frame, text="Update Transaction").grid(row=5, column=1, padx=5, pady=10)
-tk.Button(transactions_frame, text="Delete Transaction").grid(row=5, column=2, padx=5, pady=10)
-
-
 # Treeview to display transactions
 transactions_tree = ttk.Treeview(transactions_frame, columns=("ID", "Product", "Customer", "Quantity", "Date", "Type"), show="headings")
 transactions_tree.heading("ID", text="ID")
@@ -329,8 +323,62 @@ transactions_tree.column("Quantity", width=80)
 transactions_tree.column("Date", width=100)
 transactions_tree.column("Type", width=80)
 
+# Function to populate the entry fields when a transaction is selected
+def select_transaction(event):
+    selected = transactions_tree.selection()
+    if selected:
+        values = transactions_tree.item(selected[0], 'values')
+        
+        product_combobox.set(values[1])
+        customer_combobox.set(values[2])
+        quantity_entry.delete(0, tk.END)
+        quantity_entry.insert(0, values[3])
+        date_entry.delete(0, tk.END)
+        date_entry.insert(0, values[4])
+        type_combobox.set(values[5])
+
+
+def populate_transactions():
+
+    # Execute SQL query with JOINs to get readable product and customer names
+    cursor.execute('''
+        SELECT 
+            Transactions.id, 
+            Products.name AS product_name, 
+            Customers.name AS customer_name, 
+            Transactions.quantity_change, 
+            Transactions.transaction_date, 
+            Transactions.transaction_type
+        FROM Transactions
+        JOIN Products ON Transactions.product_id = Products.id
+        JOIN Customers ON Transactions.customer_id = Customers.id
+    ''')
+
+    # Fetch all results
+    rows = cursor.fetchall()
+
+    # Clear the existing entries in the Treeview
+    for item in transactions_tree.get_children():
+        transactions_tree.delete(item)
+
+    # Insert each row into the Treeview
+    for row in rows:
+        transactions_tree.insert('', 'end', values=row)
+
+
+# Buttons (functionality to be connected later)
+tk.Button(transactions_frame, text="Add Transaction").grid(row=5, column=0, padx=5, pady=10)
+tk.Button(transactions_frame, text="Update Transaction").grid(row=5, column=1, padx=5, pady=10)
+tk.Button(transactions_frame, text="Delete Transaction").grid(row=5, column=2, padx=5, pady=10)
+
 # Place the Treeview in a row below the form
 transactions_tree.grid(row=6, column=0, columnspan=3, padx=5, pady=10, sticky='nsew')
+
+# TEMPORARY ROW for testing
+transactions_tree.insert('', 'end', values=(1, "Test Product", "Test Customer", 5, "2025-04-10", "Sale"))
+
+transactions_tree.bind('<<TreeviewSelect>>', select_transaction)
+# refresh_transactions()
 
 
 
